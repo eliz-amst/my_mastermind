@@ -1,26 +1,23 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror
-TARGET = my_mastermind
-SRCS = my_mastermind.c secretcode.c
-OBJS = $(SRCS:.c=.o)
+SRC = my_mastermind.c
+OBJ = $(SRC:.c=.o)
+EXEC = my_mastermind
 
 .PHONY: all clean fclean re
 
-all: $(TARGET)
+all: $(EXEC)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+$(EXEC): $(OBJ)
+	$(CC) $(CFLAGS) $(OBJ) -o $(EXEC)
 
-my_mastermind.o: my_mastermind.c secretcode.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-secretcode.o: secretcode.c secretcode.h
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ): $(SRC)
+	$(CC) $(CFLAGS) -c $(SRC)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJ)
 
 fclean: clean
-	rm -f $(TARGET)
+	rm -f $(EXEC)
 
 re: fclean all
