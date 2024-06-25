@@ -1,113 +1,156 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include "functions.h"
+#include "my_mastermind.h"
 
-#define MAX_INPUT_LENGTH 100
-
+void initialize();
+int checkSpec(char* argv, char* argv1, int * code);
+char* my_strcpy(char* param_1, char* param_2);
+void checkCode(char *tempCode, int *code);
 void randomNumber(int *code);
-void checkCode(int *numbers, int *code);
-void intArrayToString(int *scode, char *scode_str);
+int attempCheck(int * code);
+void checkAttempts(int *attempts, int *rounds);
+int checkBuffer(int* numbers);
+int checkPieces(int *numbers, int *code);
 
-void intArrayToString(int *scode, char *scode_str){
-    for (int i = 0; i < 4; i++) {
-        scode_str[i] = scode[i] + '0'; 
-        scode_str[4] = '\0'; 
+int attempts = 10;
+int rounds = 0;
+
+int main(int argc, char **argv) {
+    int code[CODE_LEN] = {0};
+    initialize();
+    if(argc == 0) return 0;
+    for (int i = 1; argv[i] != 0; i+=2) 
+       if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "-t") == 0) {
+            checkSpec(argv[i], argv[i+1], code);
+        } else {
+            printf("Wrong instructions provided!");
+            return 0;
+        }
+    attempCheck(code);
+
+    return 0;
+}
+
+void initialize(){
+    printf("Will you find the secret code?\n");
+    printf("Please enter a valid guess\n");
+}
+
+int checkSpec(char* argv, char* argv1, int * code) {
+    char tempCode[CODE_LEN];
+
+    if(strcmp(argv, "-c") == 0) 
+    {
+        my_strcpy(tempCode, argv1); 
+        checkCode(tempCode, code); 
+        return 0;
+    } else if (strcmp(argv, "-t") == 0) 
+        attempts = atoi(argv1);
+    else
+        randomNumber(code);
+    return 1;
+}
+
+char* my_strcpy(char* param_1, char* param_2){
+    int i = 0;
+    int len = strlen(param_2);
+
+    while (i < len) 
+    {
+        param_1[i] = param_2[i];
+        i++;
+    }
+
+    return param_1;
+}
+
+void checkCode(char *tempCode, int *code){    
+    for (int i = 0; i < CODE_LEN; i++)
+    {
+        if (tempCode[i] >= '0' && tempCode[i] <= '8') 
+        { 
+            if (tempCode[i] != '0') 
+                code[i] = tempCode[i] - '0'; 
+            else 
+                code[i] = 0;   
+        } 
+        else 
+            break;
     }
 }
 
-void checkCode(int *numbers, int *code){
+void randomNumber(int *code){
+    srand(time(NULL));
+    for (int i = 0; i < CODE_LEN; i++) 
+        code[i] =  rand() % 9;
+}
+
+int attempCheck(int * code){
+    int numbers[CODE_LEN] = {0}; 
+
+    while (attempts) 
+    {
+        printf("Round %d\n", rounds);
+
+        checkAttempts(&attempts, &rounds);
+
+        int check = checkBuffer(numbers);
+        if(check == -1){
+            printf("Wrong input!\n");
+            char c;
+            while (read(STDIN_FILENO, &c, 1) > 0 && c != '\n');  
+            continue;
+        } else if(checkPieces(numbers, code) == 1) {
+            return 0;  
+        }
+    }
+    return 1;
+}
+
+void checkAttempts(int *attempts, int *rounds){
+    *attempts -= 1; 
+    *rounds += 1; 
+}
+
+int checkBuffer(int* numbers){
+    char c;
+    int i = 0, ptr;
+
+    while ((ptr = read(STDIN_FILENO, &c, 1)) == 1 && c != '\n')
+    {
+        if (c >= '0' && c <= '8')
+        {        
+            if (c != '0') 
+                numbers[i++] =  c - '0'; 
+            else 
+                numbers[i++] = 0;
+        }
+        else 
+            return -1;
+    }
+
+    if (i > 4 || i < 4)             
+        return -1;
+
+    return 1;
+}
+
+int checkPieces(int *numbers, int *code){
     int misplacedPieces = 0;
     int correct = 0;
 
     for (int i = 0; i < 4; i++) 
     {
-        if (numbers[i] == code[i])
-        {
+        if (numbers[i] == code[i]) 
             correct++;
-            code[i] = -1;
-            numbers[i] = -2;
-        }
+        else if (numbers[i] != code[i] && (numbers[i] == code[(i+1)%4] || numbers[i] == code[(i+2)%4] || numbers[i] == code[(i+3)%4]))
+            misplacedPieces++;
     }
-
-    for (int i = 0; i < 4; i++) 
+    
+    if (correct == 4) 
     {
-        for (int j = 0; j < 4; j++) {
-            if (numbers[i] == code[j]) {
-                misplacedPieces++;
-                code[j] = -1;
-                break;
-            }
-        }
-    }    
-    printf("Well placed pieces: %d\nMisplaced pieces: %d\n", correct, misplacedPieces); 
-}
+        printf("Congratz! You did it!\n");
+        return 1;
+    } else 
+        printf("Well placed pieces: %d\nMisplaced pieces: %d\n", correct, misplacedPieces); 
 
-
-int main(int argc, char **argv) {
-    char input[MAX_INPUT_LENGTH]; 
-    int scode[4] = {0};
-    char scode_str[5]; 
-    int max_attempts = 10;
-    int attempt_count = 0;
-    int code = 1;
-
-    for (int index = 1; index < argc; index++) {
-        if (strcmp(argv[index], "-t") == 0 && index + 1 < argc) {
-            max_attempts = atoi(argv[index + 1]);
-            break;
-        } else if (strcmp(argv[index], "-c") == 0 && index + 1 < argc) {
-            char *secret = argv[index + 1];
-            if (strlen(secret) == 4 && isdigit(secret[0]) && isdigit(secret[1])
-                && isdigit(secret[2]) && isdigit(secret[3])) {
-                for (int i = 0; i < 4; i++) {
-                    scode[i] = secret[i] - '0'; 
-                }
-                intArrayToString(scode, scode_str);
-                code = 0;
-                break;
-            } 
-        }
-    }
-
-   if (code) {
-     randomNumber(scode); 
-     intArrayToString(scode, scode_str);
-    }
-
-    printf("Will you find the secret code?\n");
-    printf("Please enter a valid guess\n");
-
-    while (attempt_count < max_attempts) {
-        int i = 0;
-        char c;
-        while (i < 4) {
-            ssize_t bytes_read = read(STDIN_FILENO, &c, 1);
-            if (bytes_read == 0 || c == '\n') {
-                break;
-            } else if (!isdigit(c)) { 
-                printf("Wrong input!\n");
-                break; 
-            } else {
-                input[i++] = c;
-            } 
-        }
-        intArrayToString(scode, scode_str);
-        input[i] = '\0'; 
-
-        if (strcmp(input, scode_str) == 0) {
-            printf("Congratz! You did it!\n");
-            return 0; 
-        } else {
-            int numbers[4];
-            for (int i = 0; i < 4; i++) {
-                numbers[i] = input[i] - '0';
-            }
-            checkCode(numbers, scode);
-        }
-        attempt_count++;
-    }
     return 0;
 }
